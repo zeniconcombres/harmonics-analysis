@@ -1,7 +1,8 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
-import os, sys, time
+import plotly.graph_objects as go
+# import matplotlib.pyplot as plt
+import time
 from matplotlib.colors import LinearSegmentedColormap
 
 # CONSTANTS
@@ -14,11 +15,10 @@ def _gen_soln_space(xspan=[0,1000], yspan=[-1000,1000], step=1.0):
 
     # Generate the meshgrid using np.meshgrid
     X, Y = np.meshgrid(x_range, y_range)
-    return X, Y
+    return X, Y, x_range, y_range
 
-def calc_amplification(x_h, r_h, v_bkg_h ,h=2, R_range=[0,1000], X_range=[-1000,1000], step=1.0):
-    R, X = _gen_soln_space(xspan=R_range, yspan=X_range, step=step)
-
+def calc_amplification(x_h, r_h, v_bkg_h ,h=2, r_range=[0,1000], x_range=[-1000,1000], step=1.0):
+    R, X, R_range, X_range = _gen_soln_space(xspan=r_range, yspan=x_range, step=step)
     # calculating the voltage split at each network impedance point
     v_drop_h = v_bkg_h * (r_h + 1j*x_h) / (r_h + 1j*x_h + R + X)
     amp_factor = abs(v_drop_h) / v_bkg_h
@@ -26,8 +26,8 @@ def calc_amplification(x_h, r_h, v_bkg_h ,h=2, R_range=[0,1000], X_range=[-1000,
 
     # plotting the results
     plot_soln_space(
-        R, X, amp_factor,
-        x_h, r_h,
+        R_range, X_range, amp_factor,
+        r_h, x_h,
         savefig=True, filename="tester.png"
     )
 
@@ -35,7 +35,7 @@ def calc_amplification(x_h, r_h, v_bkg_h ,h=2, R_range=[0,1000], X_range=[-1000,
 
 
 def plot_soln_space(
-        R, X, values,
+        R_range, X_range, values,
         r_h, x_h,
         savefig=False, filename=None
     ):
@@ -46,36 +46,37 @@ def plot_soln_space(
                (1, 'red')]
     cmap = LinearSegmentedColormap.from_list('custom_cmap', colours, N=256)
 
-    # Create a 2D plot with color scale representing the magnitude of Z
-    plt.imshow(
-        np.abs(values), 
-        extent=(np.min(R), np.max(R), np.min(X), np.max(X)), 
-        cmap=cmap
+    # Convert the Matplotlib colormap to a Plotly colorscale
+    cmap_colors = [cmap(i) for i in range(cmap.N)]
+    plotly_colorscale = [[float(i) / (len(cmap_colors)-1), f'rgb{tuple(int(255 * c) for c in cmap_colors[i][:3])}'] for i in range(len(cmap_colors))]
+
+    # Create a 2D heatmap with color scale representing the absolute value of Z
+    heatmap = go.Heatmap(z=values, x=R_range, y=X_range, colorscale=plotly_colorscale)
+
+    # Add a big white 'X' at point (30, 50)
+    scatter = go.Scattergl(
+        x=[r_h], y=[x_h], 
+        mode='markers', 
+        marker=dict(symbol='x', size=10, color='white'), 
+        name='Impedance'
     )
 
-    # Add a colorbar to show the magnitude scale
-    cbar = plt.colorbar(label='Magnitude')
-    cbar.set_clim(0, np.max(values))
+    # Create the layout
+    layout = go.Layout(
+        title='Plot of Amplification Factor',
+        xaxis=dict(title='R (ohms)'),
+        yaxis=dict(title='X (ohms)'),
+        showlegend=True
+    )
 
-    # showing the site impedance on the plot
-    plt.scatter(r_h, x_h, marker='x', s=200, color='black', linewidth=2, label="Site impedance")
-    plt.legend(loc='lower center')
+    # Create the figure
+    fig = go.Figure(data=[heatmap, scatter], layout=layout)
 
-    # set labels and title
-    plt.xlabel('R (ohms)')
-    plt.ylabel('X (ohms)')
-    plt.title('Plot of Amplification Factor')
-
-    # set axes limits to show the axes at the origin
-    plt.xlim(left=np.min(R), right=np.max(R))
-    plt.ylim(bottom=np.min(X), top=np.max(X))
-
-    # add grid lines
-    plt.axhline(0, color='black', linewidth=0.5, linestyle='--')
-    plt.axvline(0, color='black', linewidth=0.5, linestyle='--')
+    # Display the interactive plot in an HTML file
+    fig.write_html("interactive_plot.html")
 
     # save the plot if desired
-    plt.savefig(filename) if savefig else None
+    # fig.savefig(filename) if savefig else None
     return
 
 
