@@ -62,11 +62,15 @@ def plot_soln_space(
     )
 
     # Add a big white 'X' at point (30, 50)
+    site_AF = ampfac[
+        [i[0] for i in enumerate(X_range) if i[1]==x_h],
+        [i[0] for i in enumerate(R_range) if i[1]==r_h] 
+        ][0]
     scatter = go.Scattergl(
         x=[r_h], y=[x_h], 
         mode='markers', 
         marker=dict(symbol='x', size=10, color='white'), 
-        name='Impedance'
+        name=f'Site: {site_AF}'
     )
 
     # Line graph of amplification values for the given site inductance r_h and x_h
@@ -95,11 +99,22 @@ def plot_soln_space(
     )
 
     # Create subplots with one row and two columns
-    fig = make_subplots(rows=1, cols=3, subplot_titles=[
-        'Amplification change over X',
-        'Amplification change over R',
+    fig = make_subplots(
+        rows=1, cols=3, subplot_titles=[
+        'Amplification change over X', 
+        'Amplification change over R', 
         'Amplification Factor'
-        ], column_widths=[0.2, 0.2, 0.6])
+        ], column_widths=[0.2, 0.35, 0.45]
+    )
+    
+    # Add a subplot within the third subplot (bottom right)
+    # fig = make_subplots(
+    #     rows=1, cols=2, 
+    #     subplot_titles=[
+    #         'Amplification change over X',
+    #         'Amplification change over R',
+    #         ]
+    #     )
 
     # Add line graph to the upper left subplot
     fig.add_trace(line_graph_x, row=1, col=1)
@@ -110,6 +125,16 @@ def plot_soln_space(
     fig.add_trace(line_graph_r, row=1, col=2)
     fig.update_xaxes(title_text='R (Ohms)', row=1, col=2)
     fig.update_yaxes(title_text='Amplification Factor', row=1, col=2)
+
+    # adding domains to the inner subplot
+    # fig.update_layout(
+    #     yaxis=dict(domain=[0, 0.5]),  # Inner subplot
+    #     yaxis2=dict(domain=[0.5, 1.0]),  # Main subplot
+    # )
+
+    # Add inner subplot to the main figure
+    # fig.add_trace(fig['data'][0], row=1, col=1)
+    # fig.add_trace(fig['data'][1], row=1, col=2)
 
     # Add heatmap plot to the right hand side subplot
     fig.add_trace(heatmap, row=1, col=3)
@@ -124,6 +149,13 @@ def plot_soln_space(
 
     # Add 'X' marker to show the site impedance to the same subplot
     fig.add_trace(scatter, row=1, col=3)
+
+   # Update the layout to use different horizontal domains for the main subplot and the inner subplot
+    fig.update_layout(
+        xaxis=dict(domain=[0, 0.2]),  # Inner subplot
+        xaxis2=dict(domain=[0.3, 0.5]),  # Inner subplot
+        xaxis3=dict(domain=[0.6, 1.0]),  # Main subplot
+    )
 
     # Update the layout
     fig.update_layout(layout)
@@ -144,7 +176,7 @@ if __name__ == "__main__":
     step = 1.0
     R, X, R_range, X_range = gen_soln_space(xspan=r_range, yspan=x_range, step=step)
     # if considering TG, 0.75% is half of 1.5% from the planning levels
-    AF = calc_amplification(x_h=30.0, r_h=100.0, v_bkg_h=0.75, R=R, X=X, h=11) 
+    AF = calc_amplification(x_h=30.0, r_h=100.0, v_bkg_h=0.75, R=R, X=X, h=14) 
     # plot_soln_space(X,Y)
     runtime = round(time.time() - start_time, 1)
     print(f"Runtime: {runtime}s")
