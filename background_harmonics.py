@@ -11,7 +11,9 @@ import numpy as np
 import plotly.graph_objects as go
 # import matplotlib.pyplot as plt
 import time
+from pandas import DataFrame as df
 from matplotlib.colors import LinearSegmentedColormap
+from plotly.subplots import make_subplots
 
 # CONSTANTS
 
@@ -33,14 +35,14 @@ def calc_amplification(x_h, r_h, v_bkg_h, R, X, h=2):
     return amp_factor
 
 def plot_soln_space(
-        R_range, X_range, values,
+        R_range, X_range, ampfac,
         r_h, x_h, h,
         filename=None
     ):
     # Define a custom colormap from green to red
     colours = [(0, 'green'), 
-               (1.5/np.max(values),'orange'), 
-               (2/np.max(values),'red'), 
+               (1.5/np.max(ampfac),'orange'), 
+               (2/np.max(ampfac),'red'), 
                (1, 'red')]
     cmap = LinearSegmentedColormap.from_list('custom_cmap', colours, N=256)
 
@@ -55,7 +57,7 @@ def plot_soln_space(
 
     # Create a 2D heatmap with color scale representing the absolute value of Z
     heatmap = go.Heatmap(
-        z=values, x=R_range, y=X_range, 
+        z=ampfac, x=R_range, y=X_range, 
         colorscale=plotly_colorscale, name='Amplification Factor'
     )
 
@@ -67,21 +69,67 @@ def plot_soln_space(
         name='Impedance'
     )
 
+    # Line graph of amplification values for the given site inductance r_h and x_h
+    ampfac_df = df(ampfac, index=X_range, columns=R_range)
+    print(ampfac_df.head())
+    # print(ampfac_df.loc[:,[r_h]])
+    # grabbing the r_h and x_h data into separate dataframes
+    # r_h_df =  ampfac_df.loc[:,[r_h]]
+
+    line_graph_x = go.Scatter(
+        x=X_range,
+        y=ampfac[:,[i[0] for i in enumerate(R_range) if i[1]==r_h]].transpose()[0],
+        mode='lines', name='Amplification change over X'
+        )
+
+    line_graph_r = go.Scatter(
+        x=R_range,
+        y=ampfac[[i[0] for i in enumerate(X_range) if i[1]==x_h]][0],
+        mode='lines', name='Amplification change over R'
+        )
+
     # Create the layout
     layout = go.Layout(
-        title=f'Plot of Amplification Factor for h={h}',
-        xaxis=dict(title='R (ohms)'),
-        yaxis=dict(title='X (ohms)'),
-        # showlegend=True,
-        coloraxis=dict(
-            cmin=0,
-            cmax=np.max(values),
-            colorbar=dict(title='Amplification Factor')  # Set the color bar title
-        )
+        title=f'Plot of Amplification Factor for h={h}', 
+        showlegend=False
     )
 
+    # Create subplots with one row and two columns
+    fig = make_subplots(rows=1, cols=3, subplot_titles=[
+        'Amplification change over X',
+        'Amplification change over R',
+        'Amplification Factor'
+        ], column_widths=[0.2, 0.2, 0.6])
+
+    # Add line graph to the upper left subplot
+    fig.add_trace(line_graph_x, row=1, col=1)
+    fig.update_xaxes(title_text='X (Ohms)', row=1, col=1)
+    fig.update_yaxes(title_text='Amplification Factor', row=1, col=1)
+
+    # Add line graph to the bottom left subplot
+    fig.add_trace(line_graph_r, row=1, col=2)
+    fig.update_xaxes(title_text='R (Ohms)', row=1, col=2)
+    fig.update_yaxes(title_text='Amplification Factor', row=1, col=2)
+
+    # Add heatmap plot to the right hand side subplot
+    fig.add_trace(heatmap, row=1, col=3)
+    fig.update_xaxes(title_text='R (Ohms)', row=1, col=3)
+    fig.update_yaxes(title_text='X (Ohms)', row=1, col=3)
+        # showlegend=True,
+        # coloraxis=dict(
+        #     cmin=0,
+        #     cmax=np.max(ampfac),
+        #     colorbar=dict(title='Amplification Factor')  # Set the color bar title
+        # )
+
+    # Add 'X' marker to show the site impedance to the same subplot
+    fig.add_trace(scatter, row=1, col=3)
+
+    # Update the layout
+    fig.update_layout(layout)
+
     # Create the figure
-    fig = go.Figure(data=[heatmap, scatter], layout=layout)
+    # fig = go.Figure(data=[heatmap, scatter], layout=layout)
 
     # Save the interactive plot to a HTML file
     fig.write_html("interactive_"+filename+".html")
