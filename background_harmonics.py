@@ -27,11 +27,12 @@ def gen_soln_space(xspan=[0,1000], yspan=[-1000,1000], step=1.0):
     X, Y = np.meshgrid(x_range, y_range)
     return X, Y, x_range, y_range
 
-def calc_amplification(x_h, r_h, v_bkg_h, R, X, h=2):
+def calc_amplification(x_h, r_h, R, X, v_bkg_h=None , h=2):
     # calculating the voltage split at each network impedance point
-    v_drop_h = v_bkg_h * (r_h + 1j*x_h) / (r_h + 1j*x_h + R + X)
-    amp_factor = abs(v_drop_h) / v_bkg_h
+    v_drop_h = (r_h+(1j*x_h)) / ((r_h+R)+1j*(x_h+X))
+    amp_factor = abs(v_drop_h)
     print(f'The maximum amplification factor for h={h} is {np.max(amp_factor)}.')
+    # print(amp_factor)
     return amp_factor
 
 def plot_soln_space(
@@ -41,8 +42,8 @@ def plot_soln_space(
     ):
     # Define a custom colormap from green to red
     colours = [(0, 'green'), 
-               (1.5/np.max(ampfac),'orange'), 
-               (2/np.max(ampfac),'red'), 
+               (1.5/np.max(ampfac) if np.max(ampfac) > 1.5 else 0.5,'orange'), 
+               (2/np.max(ampfac) if np.max(ampfac) > 2.0 else 0.75,'red'), 
                (1, 'red')]
     cmap = LinearSegmentedColormap.from_list('custom_cmap', colours, N=256)
 
@@ -58,19 +59,22 @@ def plot_soln_space(
     # Create a 2D heatmap with color scale representing the absolute value of Z
     heatmap = go.Heatmap(
         z=ampfac, x=R_range, y=X_range, 
-        colorscale=plotly_colorscale, name='Amplification Factor'
+        colorscale=plotly_colorscale, name='Amplification Factor (AF)'
+        # colorscale='Viridis', name='Amplification Factor (AF)'
+    )
+    # Create contours to overlay the heatmap
+    contours = go.Contour(
+        z=ampfac, x=R_range, y=X_range,
+        colorscale=plotly_colorscale, name='AF contours'
+        # colorscale='Viridis', name='AF contours'
     )
 
     # Add a big white 'X' at point (30, 50)
-    site_AF = ampfac[
-        [i[0] for i in enumerate(X_range) if i[1]==x_h],
-        [i[0] for i in enumerate(R_range) if i[1]==r_h] 
-        ][0]
     scatter = go.Scattergl(
         x=[r_h], y=[x_h], 
         mode='markers', 
         marker=dict(symbol='x', size=10, color='white'), 
-        name=f'Site: {site_AF}'
+        name=f'Site Impedance'
     )
 
     # Line graph of amplification values for the given site inductance r_h and x_h
@@ -138,6 +142,7 @@ def plot_soln_space(
 
     # Add heatmap plot to the right hand side subplot
     fig.add_trace(heatmap, row=1, col=3)
+    fig.add_trace(contours, row=1, col=3)
     fig.update_xaxes(title_text='R (Ohms)', row=1, col=3)
     fig.update_yaxes(title_text='X (Ohms)', row=1, col=3)
         # showlegend=True,

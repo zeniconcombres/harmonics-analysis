@@ -25,7 +25,7 @@ plot_figure = True
 
 ########## CALCULATING THE BACKGROUND HARMONICS ##########
 R, X, R_range, X_range = gen_soln_space(xspan=r_range, yspan=x_range, step=step)
-AF = calc_amplification(x_h=30.0, r_h=100.0, v_bkg_h=0.75, R=R, X=X, h=11)
+AF = calc_amplification(x_h=30.0, r_h=3.0, v_bkg_h=0.75, R=R, X=X, h=11)
 
 # x_list = AF[:,[i[0] for i in enumerate(R_range) if i[1]==r_h]]
 # print(x_list.transpose()[0])
