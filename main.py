@@ -5,6 +5,7 @@ Created on: 11/12/23
 """
 
 from background_harmonics import *
+from plotter import *
 import pandas as pd 
 from pandas import DataFrame as df
 
@@ -25,7 +26,7 @@ plot_figure = True
 
 ########## CALCULATING THE BACKGROUND HARMONICS ##########
 R, X, R_range, X_range = gen_soln_space(xspan=r_range, yspan=x_range, step=step)
-AF = calc_amplification(x_h=30.0, r_h=3.0, v_bkg_h=0.75, R=R, X=X, h=11)
+AF = calc_amplification(x_h=450.0, r_h=80.0, v_bkg_h=0.75, R=R, X=X, h=11)
 
 # x_list = AF[:,[i[0] for i in enumerate(R_range) if i[1]==r_h]]
 # print(x_list.transpose()[0])
@@ -42,9 +43,10 @@ AF = calc_amplification(x_h=30.0, r_h=3.0, v_bkg_h=0.75, R=R, X=X, h=11)
 # print(ampfac_df[[r_h]])
 # print(ampfac_df.transpose()[[x_h]])
 
-# plotting the results
+########### PLOTTING THE RESULTS ##################
 plot_soln_space(
     R_range, X_range, AF,
-    r_h, x_h, h,
+    site_r=r_h, site_x=x_h, r_h=r_h, x_h=x_h, h=h,
+    polygon=None, # TODO!!! 
     filename=filename+'_{:02d}'.format(h)
 ) if plot_figure else None
