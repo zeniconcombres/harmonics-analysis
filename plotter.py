@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 
 def _gen_heatmap(R_range, X_range, ampfac):
-    # Create a 2D heatmap with color scale representing the absolute value of Z
+    """Create a 2D heatmap with color scale representing the absolute value of Z"""
     heatmap = go.Heatmap(
         z=ampfac, x=R_range, y=X_range, 
         # colorscale=plotly_colorscale, name='Amplification Factor (AF)'
@@ -24,10 +24,10 @@ def _gen_heatmap(R_range, X_range, ampfac):
     )
     return heatmap, contours
 
-def _gen_site_impedance(site_r, site_x):
-    # Add a big white 'X' at point (30, 50)
+def _gen_site_impedance(site_r_h, site_x_h):
+    """Add a big white 'X' at point (30, 50)"""
     site_impedance = go.Scattergl(
-        x=[site_r], y=[site_x], 
+        x=[site_r_h], y=[site_x_h], 
         mode='markers', 
         marker=dict(symbol='x', size=10, color='white'), 
         name=f'Site Impedance'
@@ -35,23 +35,38 @@ def _gen_site_impedance(site_r, site_x):
     return site_impedance
 
 def _gen_sensitivities(R_range, X_range, ampfac, r_h, x_h):
-    # Line graph of amplification values for a given network point 
-    # to show the particular sensitivities around this point
+    """Line graph of amplification values for a given network point 
+    to show the particular sensitivities around this point"""
     line_graph_x = go.Scatter(
         x=X_range,
         y=ampfac[:,[i[0] for i in enumerate(R_range) if i[1]==r_h]].transpose()[0],
         mode='lines', name='Amplification change over X'
-        )
+    )
     line_graph_r = go.Scatter(
         x=R_range,
         y=ampfac[[i[0] for i in enumerate(X_range) if i[1]==x_h]][0],
         mode='lines', name='Amplification change over R'
-        )
+    )
     return line_graph_r, line_graph_x
 
+def _gen_polygon_points(polygon,h):
+    """Network polygon points to include"""
+    poly_scatter = go.Scatter(
+        x=polygon[f"R{str(h)}"],y=polygon[f"X{str(h)}"],
+        mode='markers', 
+        marker=dict(symbol='circle', size=5, color='orange'),
+        name='Network polygon vertices'
+    )
+    polygon_for_line = polygon.append(polygon.iloc[0]).reset_index(drop=True)
+    poly_line = go.Scatter(
+        x=polygon_for_line[f"R{str(h)}"],y=polygon_for_line[f"X{str(h)}"],
+        mode='lines', name='Network polygon'
+    )
+    return poly_scatter, poly_line
+
 def plot_soln_space(
-        R_range, X_range, ampfac, site_r, site_x,
-        r_h=0.0, x_h=100.0, h=2, polygon=None,
+        R_range, X_range, ampfac, site_r_h, site_x_h,
+        plotter_r=0.0, plotter_x=100.0, h=2, polygon=None,
         filename=None
     ):
     """This function plots out the amplification factor results. The plot generates
@@ -77,8 +92,8 @@ def plot_soln_space(
 
     # generate plot objects for each subplot
     heatmap, contours = _gen_heatmap(R_range, X_range, ampfac)
-    site_impedance = _gen_site_impedance(site_r, site_x)
-    line_graph_r, line_graph_x = _gen_sensitivities(R_range, X_range, ampfac, r_h, x_h)
+    site_impedance = _gen_site_impedance(site_r_h, site_x_h)
+    line_graph_r, line_graph_x = _gen_sensitivities(R_range, X_range, ampfac, plotter_r, plotter_x)
 
     # Create the layout
     layout = go.Layout(
@@ -113,6 +128,12 @@ def plot_soln_space(
 
     # Add 'X' marker to show the site impedance to the same subplot
     fig.add_trace(site_impedance, row=1, col=3)
+
+    # If polygon information is provided, add this to the heatmap plot
+    if not(polygon.empty):
+        poly_scatter, poly_line = _gen_polygon_points(polygon,h)
+        fig.add_trace(poly_scatter, row=1, col=3)
+        fig.add_trace(poly_line, row=1, col=3)
 
    # Update the layout to use different horizontal domains for the main subplot and the inner subplot
     fig.update_layout(
