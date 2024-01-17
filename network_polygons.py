@@ -9,9 +9,11 @@ Date Created: 16/01/2024"""
 
 import pandas as pd
 import numpy as np
+import random
 from pandas import DataFrame as df
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
+from shapely.geometry import Polygon, LineString, Point
 
 # constants
 H_ORDERS = 49 # number of harmonics in orders 2-50
@@ -25,6 +27,8 @@ class Project():
         self.h_R = df([])
         self.h_X = df([])
         self.polygon_data_dict = {}
+        self.interpolated_polygon_points = {}
+        self.points_inside_polygon = {}
 
     # def test_function():
     #     pass
@@ -63,7 +67,83 @@ class Project():
                 axis=1
                 )
         return self.polygon_data_dict
-    
+
+    def interpolate_polygon_points(self, h, num_pts=100, print_figure=False):
+        """Function interpolates the network polygon corner points
+        to create more points along the polygon boundary."""
+        X = self.polygon_data_dict[h][f"X{h}"].to_list()
+        R = self.polygon_data_dict[h][f"R{h}"].to_list()
+
+        # Create a Polygon object from the vertices
+        polygon = Polygon(zip(R, X))
+
+        # Create a LineString object from the exterior of the polygon
+        line = LineString(polygon.exterior)
+
+        # Interpolate points along the edge of the polygon
+        num_points = num_pts  # You can adjust the number of interpolated points
+        interpolated_points = [line.interpolate(i / num_points, normalized=True) for i in range(num_points + 1)]
+
+        # Extract x and y coordinates from the interpolated points
+        interpolated_R = [point.x for point in interpolated_points]
+        interpolated_X = [point.y for point in interpolated_points]
+
+        interpolated_points = df([])
+        interpolated_points[f"R{h}"] = interpolated_R
+        interpolated_points[f"X{h}"] = interpolated_X
+        self.interpolated_polygon_points[h] = interpolated_points
+
+        if print_figure == True:
+            # Plot the polygon and the interpolated points
+            fig, ax = plt.subplots()
+            ax.plot(R + [R[0]], X + [X[0]], marker='o', label='Polygon Vertices', linestyle='-', color='blue')
+            ax.plot(interpolated_R, interpolated_X, marker='.', label='Interpolated Points', linestyle='-', color='red')
+            ax.set_xlabel('R (Ohms)')
+            ax.set_ylabel('X (Ohms)')
+            ax.set_title(f'Interpolated impedance points along network polygon edges for h={h}')
+            ax.legend()
+            fig.savefig(f"{num_pts}polygon_points_interpolated_h{h}.png")
+        return interpolated_points
+
+    def generate_random_points_inside_polygon(self, h, num_points=1000, print_figure=False):
+        """Function to generate random points inside the polygon"""
+        X = self.polygon_data_dict[h][f"X{h}"].to_list()
+        R = self.polygon_data_dict[h][f"R{h}"].to_list()
+
+        # Create a Polygon object from the vertices
+        polygon = Polygon(zip(R, X))
+
+        points = []
+        min_x, min_y, max_x, max_y = polygon.bounds
+
+        # generate points
+        while len(points) < num_points:
+            random_point = Point(random.uniform(min_x, max_x), random.uniform(min_y, max_y))
+            if random_point.within(polygon):
+                points.append(random_point)
+
+        # Extract x and y coordinates from the random points
+        random_R = [point.x for point in points]
+        random_X = [point.y for point in points]
+
+        random_points_inside_poly = df([])
+        random_points_inside_poly[f"R{h}"] = random_R
+        random_points_inside_poly[f"X{h}"] = random_X
+        self.points_inside_polygon[h] = random_points_inside_poly
+
+        if print_figure == True: 
+            # Plot the polygon, its vertices, and the random points
+            fig, ax = plt.subplots()
+            ax.plot(R + [R[0]], X + [X[0]], marker='o', label='Polygon Vertices', linestyle='-', color='blue')
+            ax.plot(random_R, random_X, marker='.', label='Random Points', linestyle='None', color='green')
+            ax.set_xlabel('R (Ohms)')
+            ax.set_ylabel('X (Ohms)')
+            ax.set_title(f'{num_points} random points inside network polygon h={h}')
+            ax.legend()
+            fig.savefig(f"{num_points}points_inside_polygon_h{h}.png")
+        return random_points_inside_poly
+
+
     def plot_harmonic_polygon(self, h):
         # this one can probably replaced by something in plotter
         plot_data = self.polygon_data_dict[h]
