@@ -57,7 +57,8 @@ def _gen_polygon_points(polygon,h):
         marker=dict(symbol='circle', size=5, color='orange'),
         name='Network polygon vertices'
     )
-    polygon_for_line = polygon.append(polygon.iloc[0]).reset_index(drop=True)
+    polygon_for_line = polygon
+    polygon_for_line.loc[len(polygon)] = polygon.iloc[0]
     poly_line = go.Scatter(
         x=polygon_for_line[f"R{str(h)}"],y=polygon_for_line[f"X{str(h)}"],
         mode='lines', name='Network polygon'
@@ -79,10 +80,13 @@ def plot_soln_space(
         X_range (numpy.ndarray): evenly spaced numbers across a range of X
             to form the Y axis of the surface plot
         ampfac (list): meshgrid of the amplification factors over the R and X surface.
-        r_h (float, optional): impedance point's resistance value
+        site_r_h (float, optional): site aggregate resistance in Ohms (R)
+        site_x_h (float, optional): site aggregate inductance / capacitance in Ohms (X)
+        plotter_r (float, optional): impedance point's resistance value
             to appear in the focus plots to show sensitivity. Defaults to 0.0.
-        x_h (float, optional): impedance point's resistance value 
+        plotter_x (float, optional): impedance point's resistance value 
             to appear in the focus plots to show sensitivity. Defaults to 100.0.
+        # TODO: takee seensitivity point as a float not just integer
         h (int, optional): harmonic order the graphs represent. Defaults to 2.
         filename (str, optional): for example, '2023-10-10_plots.png'. Defaults to None.
     """
@@ -93,6 +97,7 @@ def plot_soln_space(
     # generate plot objects for each subplot
     heatmap, contours = _gen_heatmap(R_range, X_range, ampfac)
     site_impedance = _gen_site_impedance(site_r_h, site_x_h)
+    # print(ampfac) TODO!!!
     line_graph_r, line_graph_x = _gen_sensitivities(R_range, X_range, ampfac, plotter_r, plotter_x)
 
     # Create the layout
@@ -147,4 +152,38 @@ def plot_soln_space(
 
     # Save the interactive plot to a HTML file
     fig.write_html("interactive_"+filename+".html") if filename else None
+
+    plt.close()
     return
+
+def plot_network_polygon(plot_data, h):
+    """Function that plots the network polygons when taking in a dataframe for the polygon
+    corner points. Example input:
+         R2      X2
+    1    6.005   4.0135
+    2    3.023   3.1548
+    ...
+    10   103.12  7.2391
+
+    Can also be used in conjunction with the site object for plot_data input. 
+    e.g. ibr_project.polygon_data_dict[h]
+    
+    Args:
+        plot_data (DataFrame): polygon corner points
+        h (integer): harmonic order
+
+    Returns:
+        fig, ax: figure and axis from pyplot
+    """
+    plot_data_for_line = plot_data
+    plot_data_for_line.loc[len(plot_data)] = plot_data.iloc[0]
+    plot_data_for_line.reset_index(drop=True, inplace=True)
+    fig, ax = plt.subplots(1,1)
+    x=plot_data[f"R{str(h)}"]
+    y=plot_data[f"X{str(h)}"]
+    ax.scatter(x, y, s=10, c='blue')
+    ax.plot(plot_data_for_line.iloc[:,0], plot_data_for_line.iloc[:,1],linestyle='-', c='black')
+    ax.set_title(f"Harmonic polygon for h={h}")
+    ax.set_xlabel("R (Ohms)")
+    ax.set_ylabel("X (Ohms)")
+    return fig, ax
