@@ -4,7 +4,7 @@ Created by: Inez Zheng (@zeniconcombres)
 Created on: 11/12/23
 """
 
-
+import sys, os
 import pandas as pd 
 from pandas import DataFrame as df
 # reading in all the functions from the specialised scripts 
@@ -12,10 +12,16 @@ from background_harmonics import *
 from plotter import *
 from network_polygons import *
 
+#### WORKING DIRECTORY ####
+os.chdir(r"./testing")
+
 #### INPUTS ####
-x_h = 100.0 # Ohms
-r_h = 10.0 # Ohms
-v_bkg_h = 0.75 # %
+# site impedance
+# x_h = 100.0 # Ohms
+# r_h = 10.0 # Ohms
+x_h = -344.203565 # Ohms
+r_h = 42.058105 # Ohms
+v_bkg_h = 0.5 # %
 h = 14 # th order harmonic
 
 # Network impedance range to be scanned across
@@ -27,16 +33,20 @@ step = 1.0
 filename = 'amplification_plot'
 plot_figure = False
 print_figure = False
-# plot_figure = True
+plot_figure = True
+print_figure = True
 
 ########## CALCULATING THE BACKGROUND HARMONICS ##########
 R, X, R_range, X_range = gen_soln_space(xspan=r_range, yspan=x_range, step=step)
 AF = calc_amplification(site_x_h=x_h, site_r_h=r_h, v_bkg_h=0.75, R=R, X=X, h=h)
 
 ########### READING IN NETWORK POLYGONS ################
-network_polygon_file = 'harmonic_polygons.xlsx'
+network_polygon_file = "test_data.xlsx"
+polygon_worksheet = "polygon"
+base = 100.0 #MVA
+# network_polygon_file = 'harmonic_polygons.xlsx'
 ibr_project = Project(name="Puffer Fish")
-ibr_project.input_network_data(input_filename=network_polygon_file)
+ibr_project.input_network_data(input_filename=network_polygon_file, input_sheet=polygon_worksheet, base=base)
 # showing a single harmonic order polygon that's used as a demo
 ibr_h14 = ibr_project.polygon_data_dict[14]
 print(ibr_h14.head())
@@ -90,9 +100,13 @@ if print_figure:
     # plt.show()
 
 ########### PLOTTING THE RESULTS ##################
+sensitivity_r = int(r_h)
+sensitivity_x = int(x_h)
+
 plot_soln_space(
-    R_range, X_range, AF,
-    site_r_h=r_h, site_x_h=x_h, plotter_r=r_h, plotter_x=x_h, h=h,
+    R_range, X_range, AF, h=h,
+    site_r_h=r_h, site_x_h=x_h,
+    plotter_r=sensitivity_r, plotter_x=sensitivity_x,
     polygon=ibr_project.polygon_data_dict[h],
     filename=filename+'_{:02d}'.format(h)
 ) if plot_figure else None

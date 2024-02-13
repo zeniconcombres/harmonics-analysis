@@ -33,12 +33,12 @@ class Project():
     # def test_function():
     #     pass
 
-    def input_network_data(self, input_filename, input_sheet='Sheet 1'):
+    def input_network_data(self, input_filename, input_sheet, base):
         """Function reads data from an NSP spreadsheet with network polygon data in the
         following format and separates this out into individual R and X dataframes to be stored
         against harmonic order keys in the self.network_polygons dict.
         E.g. input data:
-                 	    Harmonic #2	 	Harmonic #3	 	Harmonic #4	 	Harmonic #5	    ...
+                Harmonic #2	 	Harmonic #3	 	Harmonic #4	 	Harmonic #5	    ...
                 R	    X	    R	    X	    R	    X	    R	    X       ...
         Point 1	8.78	28.99	31.38	44.89	31.9	17.34	9.1	    37.08   ...
         Point 2	11.54	24.95	36.27	34.36	35.57	9.03	18.51	12.7    ...
@@ -48,12 +48,20 @@ class Project():
 
         Args:
             input_filename (str): filename of the input spreadsheet
+            input_sheet (str): worksheet in the input excel file
+            base (float):  MVA base that the input network polygon data is provided in
         """
-        data = pd.read_excel(input_filename, sheet_name=input_sheet, index_col=0, header=1)
+        data = pd.read_excel(input_filename, sheet_name=input_sheet, index_col=0, header=2)
         print(data.head())
         data.reset_index(drop=True,inplace=True)
+        # print(len(data.columns)%H_ORDERS)
+        # TODO: add robustness to processing input data
+        # TODO: need to account for fundamental if given 
         assert len(data.columns)%H_ORDERS == 0, f"There are {len(data.columns)} columns!"
-        
+
+        # changing the base
+        data = data*base if base else data
+
         # splitting out the DataFrame into resistance and inductance
         self.h_R = data.iloc[:,::2]
         self.h_R.columns = R_HEADERS
@@ -142,18 +150,3 @@ class Project():
             ax.legend()
             fig.savefig(f"{num_points}points_inside_polygon_h{h}.png")
         return random_points_inside_poly
-
-
-    def plot_harmonic_polygon(self, h):
-        # this one can probably replaced by something in plotter
-        plot_data = self.polygon_data_dict[h]
-        plot_data_for_line = plot_data.append(plot_data.iloc[0]).reset_index(drop=True)
-        fig, ax = plt.subplots(1,1)
-        x=plot_data[f"R{str(h)}"]
-        y=plot_data[f"X{str(h)}"]
-        ax.scatter(x, y, s=10, c='blue')
-        ax.plot(plot_data_for_line.iloc[:,0], plot_data_for_line.iloc[:,1],linestyle='-', c='black')
-        ax.set_title(f"Harmonic polygon for h={h}")
-        ax.set_xlabel("R (Ohms)")
-        ax.set_ylabel("X (Ohms)")
-        return fig, ax
