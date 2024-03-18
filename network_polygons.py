@@ -33,7 +33,7 @@ class Project():
     # def test_function():
     #     pass
 
-    def input_network_data(self, input_filename, input_sheet, base):
+    def input_network_data(self, input_filename, input_sheet, Zbase, header=0):
         """Function reads data from an NSP spreadsheet with network polygon data in the
         following format and separates this out into individual R and X dataframes to be stored
         against harmonic order keys in the self.network_polygons dict.
@@ -51,7 +51,7 @@ class Project():
             input_sheet (str): worksheet in the input excel file
             base (float):  MVA base that the input network polygon data is provided in
         """
-        data = pd.read_excel(input_filename, sheet_name=input_sheet, index_col=0, header=2)
+        data = pd.read_excel(input_filename, sheet_name=input_sheet, index_col=0, header=header)
         print(data.head())
         data.reset_index(drop=True,inplace=True)
         # print(len(data.columns)%H_ORDERS)
@@ -60,7 +60,7 @@ class Project():
         assert len(data.columns)%H_ORDERS == 0, f"There are {len(data.columns)} columns!"
 
         # changing the base
-        data = data*base if base else data
+        data = data.dropna()*Zbase if Zbase else data.dropna()
 
         # splitting out the DataFrame into resistance and inductance
         self.h_R = data.iloc[:,::2]
@@ -68,13 +68,16 @@ class Project():
         self.h_X = data.iloc[:,1::2]
         self.h_X.columns = X_HEADERS
 
+        # storing the raw converted X and R data
+        self.raw_data = data
+
         # compiling this into the network polygon dictionary stored per harmonic order
         for h in H_ORDERS_RANGE:
             self.polygon_data_dict[h] = pd.concat(
                 [self.h_R[f"R{str(h)}"], self.h_X[f"X{str(h)}"]], 
                 axis=1
                 )
-        return self.polygon_data_dict
+        return
 
     def interpolate_polygon_points(self, h, num_pts=100, print_figure=False):
         """Function interpolates the network polygon corner points

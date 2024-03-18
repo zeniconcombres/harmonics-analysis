@@ -98,7 +98,11 @@ def plot_soln_space(
     heatmap, contours = _gen_heatmap(R_range, X_range, ampfac)
     site_impedance = _gen_site_impedance(site_r_h, site_x_h)
     # print(ampfac) TODO!!!
-    line_graph_r, line_graph_x = _gen_sensitivities(R_range, X_range, ampfac, plotter_r, plotter_x)
+    try:
+        line_graph_r, line_graph_x = _gen_sensitivities(R_range, X_range, ampfac, r_h=plotter_r, x_h=plotter_x)
+    except:
+        print("Given sensitivity point failed to find a trace in the AF dataframe. Trying a default R=0.0 and X = 100.0.")
+        line_graph_r, line_graph_x = _gen_sensitivities(R_range, X_range, ampfac, r_h=0.0, x_h=100.0)
 
     # Create the layout
     layout = go.Layout(
@@ -176,8 +180,9 @@ def plot_network_polygon(plot_data, h):
         fig, ax: figure and axis from pyplot
     """
     plot_data_for_line = plot_data
-    plot_data_for_line.loc[len(plot_data)] = plot_data.iloc[0]
+    plot_data_for_line.loc[len(plot_data),:] = plot_data.iloc[0,:]
     plot_data_for_line.reset_index(drop=True, inplace=True)
+    assert len(plot_data_for_line) > len(plot_data), f"There might be something wrong with the polygon. The input data has {len(plot_data)} points."
     fig, ax = plt.subplots(1,1)
     x=plot_data[f"R{str(h)}"]
     y=plot_data[f"X{str(h)}"]
