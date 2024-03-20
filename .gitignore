@@ -1,2 +1,6 @@
 # harmonics-analysis
 *.html
+testing/*
+.ipynb_checkpoints/*
+__pycache__/*
+*.xlsx
